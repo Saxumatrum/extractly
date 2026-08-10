@@ -1,5 +1,7 @@
 # extractly
 
+![extractly — invoice extracted into an editable form](docs/screenshot.png)
+
 Upload a messy invoice, receipt, or resume (image or PDF) and get back clean,
 editable structured JSON — no manual re-typing. This is the classic "pull
 structured data out of documents" freelance task, built as a small, real,
