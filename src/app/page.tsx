@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { DocumentTypePicker } from "@/components/DocumentTypePicker";
 import { Dropzone } from "@/components/Dropzone";
 import { ExportButtons } from "@/components/ExportButtons";
@@ -8,10 +8,19 @@ import { RecentExtractions } from "@/components/RecentExtractions";
 import { InvoiceEditor } from "@/components/editors/InvoiceEditor";
 import { ReceiptEditor } from "@/components/editors/ReceiptEditor";
 import { ResumeEditor } from "@/components/editors/ResumeEditor";
-import { DOCUMENT_TYPE_LABELS, type DocumentType } from "@/lib/schemas";
+import { withBase } from "@/lib/basePath";
+import { DOCUMENT_TYPE_LABELS, DOCUMENT_TYPES, type DocumentType } from "@/lib/schemas";
 import type { ExtractionResult, RecentExtraction } from "@/lib/types";
 
 type Status = "idle" | "loading" | "error";
+
+// Fictional documents in public/samples, so visitors can try the demo
+// without hunting for a file of their own.
+const SAMPLE_FILES: Record<DocumentType, string> = {
+  invoice: "sample-invoice.png",
+  receipt: "sample-receipt.png",
+  resume: "sample-resume.png",
+};
 
 export default function Home() {
   const [documentType, setDocumentType] = useState<DocumentType>("invoice");
@@ -21,16 +30,18 @@ export default function Home() {
   const [result, setResult] = useState<ExtractionResult | null>(null);
   const [recent, setRecent] = useState<RecentExtraction[]>([]);
 
-  useEffect(() => {
-    fetch("/api/extract")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((body) => {
-        if (body?.recent) setRecent(body.recent);
-      })
-      .catch(() => {
-        // Non-critical: the recent-extractions panel is a nice-to-have.
-      });
-  }, []);
+  async function handleSampleSelected(type: DocumentType) {
+    try {
+      const name = SAMPLE_FILES[type];
+      const response = await fetch(withBase(`/samples/${name}`));
+      if (!response.ok) throw new Error();
+      const blob = await response.blob();
+      setDocumentType(type);
+      handleFileSelected(new File([blob], name, { type: blob.type || "image/png" }));
+    } catch {
+      setErrorMessage("Couldn't load the sample. Try uploading your own file.");
+    }
+  }
 
   function handleDocumentTypeChange(next: DocumentType) {
     setDocumentType(next);
@@ -56,7 +67,7 @@ export default function Home() {
       formData.append("file", file);
       formData.append("documentType", documentType);
 
-      const response = await fetch("/api/extract", {
+      const response = await fetch(withBase("/api/extract"), {
         method: "POST",
         body: formData,
       });
@@ -68,7 +79,7 @@ export default function Home() {
 
       setResult({ documentType, data: body.data } as ExtractionResult);
       setRecent((prev) => [
-        { id: body.id, documentType, label: body.data?.vendor ?? body.data?.merchant ?? body.data?.name ?? DOCUMENT_TYPE_LABELS[documentType], createdAt: new Date().toISOString() },
+        { id: body.id, documentType, label: body.label, createdAt: new Date().toISOString() },
         ...prev,
       ].slice(0, 20));
       setStatus("idle");
@@ -111,6 +122,20 @@ export default function Home() {
                   Document
                 </span>
                 <Dropzone file={file} onFileSelected={handleFileSelected} disabled={isLoading} />
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500 dark:text-neutral-400">
+                  No file handy? Try a sample:
+                  {DOCUMENT_TYPES.map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => handleSampleSelected(type)}
+                      disabled={isLoading}
+                      className="font-medium text-neutral-900 underline underline-offset-2 hover:text-neutral-600 disabled:opacity-50 dark:text-neutral-100 dark:hover:text-neutral-300"
+                    >
+                      {DOCUMENT_TYPE_LABELS[type].toLowerCase()}
+                    </button>
+                  ))}
+                </p>
               </div>
 
               <button

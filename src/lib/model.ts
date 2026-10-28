@@ -22,7 +22,9 @@ const MODEL_ID = "claude-sonnet-5";
  * without requiring a Vercel account.
  */
 export function resolveModel(): LanguageModel {
-  if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN) {
+  // On Vercel the OIDC token arrives per request rather than as an env var,
+  // so `VERCEL` (set on every deployment) is the signal there.
+  if (process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || process.env.VERCEL) {
     return `anthropic/${MODEL_ID}`;
   }
   if (process.env.ANTHROPIC_API_KEY) {

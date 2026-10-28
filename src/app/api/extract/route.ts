@@ -7,12 +7,13 @@ import {
   schemaForDocumentType,
   type DocumentType,
 } from "@/lib/schemas";
-import type { RecentExtraction } from "@/lib/types";
+import { checkRateLimit, clientIp } from "@/lib/rateLimit";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15MB
+// Vercel caps request bodies at 4.5MB, so anything bigger never reaches us.
+const MAX_FILE_BYTES = 4 * 1024 * 1024; // 4MB
 const ACCEPTED_MEDIA_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -29,19 +30,17 @@ const PROMPT_BY_TYPE: Record<DocumentType, string> = {
     "Extract structured data from this resume/CV. Capture all work experience and education entries in the order they appear (most recent first if ordering is evident). If a field is not present, use null (or an empty array for list fields). Do not invent data.",
 };
 
-/**
- * In-memory list of recent extractions, for the optional "recent
- * extractions" panel in the UI. This is intentionally process-local and
- * resets on server restart -- there is no database in this project.
- */
-const MAX_RECENT = 20;
-const recentExtractions: RecentExtraction[] = [];
-
-export async function GET() {
-  return NextResponse.json({ recent: recentExtractions });
-}
-
 export async function POST(request: Request) {
+  const retryAfter = checkRateLimit(clientIp(request));
+  if (retryAfter !== null) {
+    return NextResponse.json(
+      {
+        error: `You've hit the demo limit. Try again in ${Math.ceil(retryAfter / 60)} minutes.`,
+      },
+      { status: 429, headers: { "Retry-After": String(retryAfter) } },
+    );
+  }
+
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -77,7 +76,7 @@ export async function POST(request: Request) {
   }
   if (file.size > MAX_FILE_BYTES) {
     return NextResponse.json(
-      { error: "File is too large. Maximum size is 15MB." },
+      { error: "File is too large. Maximum size is 4MB." },
       { status: 400 },
     );
   }
@@ -123,16 +122,14 @@ export async function POST(request: Request) {
       ],
     });
 
-    const entry: RecentExtraction = {
+    // Nothing is stored server-side: this is a public demo and documents
+    // (CVs especially) carry personal data. The "recent" list is client-only.
+    return NextResponse.json({
       id: crypto.randomUUID(),
       documentType,
       label: extractionLabel(documentType, object),
-      createdAt: new Date().toISOString(),
-    };
-    recentExtractions.unshift(entry);
-    recentExtractions.length = Math.min(recentExtractions.length, MAX_RECENT);
-
-    return NextResponse.json({ id: entry.id, documentType, data: object });
+      data: object,
+    });
   } catch (error) {
     if (NoObjectGeneratedError.isInstance(error)) {
       return NextResponse.json(

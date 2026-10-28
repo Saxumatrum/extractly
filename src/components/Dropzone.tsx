@@ -71,7 +71,7 @@ export function Dropzone({
             Drop a document here, or click to browse
           </p>
           <p className="text-xs text-neutral-500 dark:text-neutral-400">
-            JPG, PNG, WebP, or PDF &middot; up to 15MB
+            JPG, PNG, WebP, or PDF &middot; up to 4MB
           </p>
         </>
       )}

@@ -1,9 +1,8 @@
 import type { Invoice, Receipt, Resume, DocumentType } from "@/lib/schemas";
 
 /**
- * A single entry in the in-memory "recent extractions" list surfaced by
- * the server (see `src/app/api/extract/route.ts`). Shared between the
- * API route and the client component that renders the list.
+ * A single entry in the "recent extractions" list. It lives only in the
+ * visitor's browser for the current session; the server stores nothing.
  */
 export type RecentExtraction = {
   id: string;
