@@ -191,7 +191,11 @@ export function ArrayTable<T extends Record<string, unknown>>({
             {columns.map((col) => (
               <th
                 key={String(col.key)}
-                className="px-3 py-2 text-left font-medium text-neutral-600 dark:text-neutral-300"
+                className={`px-3 py-2 text-left font-medium text-neutral-600 dark:text-neutral-300 ${
+                  // Numbers are short; let text columns (descriptions, names)
+                  // take the remaining width instead of being cut off.
+                  col.type === "number" ? "w-28" : ""
+                }`}
               >
                 {col.label}
               </th>
@@ -219,7 +223,7 @@ export function ArrayTable<T extends Record<string, unknown>>({
                     step={col.type === "number" ? "any" : undefined}
                     value={String(row[col.key] ?? "")}
                     onChange={(e) => updateCell(index, col.key, e.target.value)}
-                    className="w-full min-w-24 rounded border border-transparent bg-transparent px-2 py-1 hover:border-neutral-300 focus:border-neutral-500 focus:outline-none dark:hover:border-neutral-700"
+                    className={`w-full ${col.type === "number" ? "min-w-20" : "min-w-48"} rounded border border-transparent bg-transparent px-2 py-1 hover:border-neutral-300 focus:border-neutral-500 focus:outline-none dark:hover:border-neutral-700`}
                   />
                 </td>
               ))}
